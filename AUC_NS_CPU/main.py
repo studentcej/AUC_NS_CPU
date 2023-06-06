@@ -97,7 +97,7 @@ def get_numbers_of_ui_and_divider(file):
     item_threshold = int(num_items * 0.85)
     divide_item = x[item_threshold]
     popularty_threshold = popularity[divide_item]
-    pop_tensor = torch.tensor(popularity)
+    pop_tensor = torch.IntTensor(popularity)
     dividing_tensor = torch.where(pop_tensor >= popularty_threshold, 1, 0).unsqueeze(0).expand(num_users,num_items)
     return num_users, num_items, dividing_tensor.bool()
 
@@ -192,15 +192,14 @@ def model_train(real_epoch):
         optimizer.zero_grad()
 
         # Fetch Data
-        users = batch[:,0]
-        items = batch[:,1]
+        users = batch[:, 0]
+        items = batch[:, 1]
 
         # To device
         batch = batch.to(device)
 
         # Calculate Score for users
         rating_score = model.calculate_score(users)
-
 
         # Negative Sampling
         negtives = AUC_NS(arg, users, rating_score, batch, I_plus_list, I_minus_list, prior_beta, num_items)
@@ -254,12 +253,6 @@ def erase(score):
 
 
 def print_epoch_result(real_epoch, Pre_dic, Recall_dict, F1_dict, NDCG_dict, OHR_dict, UHR_dict, OCR_dict, UCR_dict, FPR_dict, FNR_dict):
-    best_result = {}
-    best_epoch = {}
-    for k in arg.topk:
-        best_result[k] = [0., 0., 0., 0., 1., 1., 1., 1., 1., 1.]
-        best_epoch[k] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
     for k in arg.topk:
         if Pre_dic[k] > best_result[k][0]:
             best_result[k][0], best_epoch[k][0] = Pre_dic[k], real_epoch
@@ -342,16 +335,22 @@ if __name__ == '__main__':
     # Calculate Prior
     prior_beta = torch.tensor(get_prior_beta(prior)).to(device)
 
+    best_result = {}
+    best_epoch = {}
+    for k in arg.topk:
+        best_result[k] = [0., 0., 0., 0., 1., 1., 1., 1., 1., 1.]
+        best_epoch[k] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
     # Train and Test
+
     for epoch in range(arg.epochs):
         if arg.train_mode == 'new_train':
             real_epoch = epoch
         else:
             real_epoch = checkpoint['epoch'] + 1 + epoch
-        model_train(real_epoch)
-        # mc.show_cuda_info()
-        Pre_dic, Recall_dict, F1_dict, NDCG_dict, OHR_dict, UHR_dict, OCR_dict, UCR_dict,  FPR_dict, FNR_dict = model_test()
 
+        model_train(real_epoch)
+        Pre_dic, Recall_dict, F1_dict, NDCG_dict, OHR_dict, UHR_dict, OCR_dict, UCR_dict,  FPR_dict, FNR_dict = model_test()
         scheduler.step()
         best_result, best_epoch = print_epoch_result(real_epoch, Pre_dic, Recall_dict, F1_dict, NDCG_dict, OHR_dict, UHR_dict, OCR_dict, UCR_dict,  FPR_dict, FNR_dict)
     print_best_result(best_result, best_epoch)

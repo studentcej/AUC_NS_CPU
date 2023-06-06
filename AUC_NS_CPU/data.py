@@ -15,9 +15,8 @@ class Data(Dataset):
         data = []
         self.num_users = num_users
         self.num_items = num_items
-        self.pos_dict,self.pos_tensor = self.get_pos(datapair)
+        self.pos_dict = self.get_pos(datapair)
         self.neg_dict = self.get_neg(datapair, self.pos_dict)
-        self.neg_tensor = ~self.pos_tensor
         self.pos_lens_List, self.neg_lens_List = self.get_lens()
         for u in self.pos_dict.keys():
             for i in self.pos_dict[u]:
@@ -37,9 +36,11 @@ class Data(Dataset):
         for i in batch:
             u = int(i[0])
             i = int(i[1])
-            extra_pos = np.random.choice(self.pos_dict[u], size=self.arg.N, replace=True).tolist()
-            extra_neg = np.random.choice(self.neg_dict[u], size=self.arg.N, replace=False).tolist()
-            candidate_set = np.random.choice(self.neg_dict[u], size=self.arg.M, replace=False).tolist()
+
+            extra_pos = random.choices(self.pos_dict[u], k=self.arg.N)
+            extra_neg = random.sample(self.neg_dict[u], k=self.arg.N)
+            candidate_set = random.sample(self.neg_dict[u], k=self.arg.M)
+
             data_entry = [u] + [i] + extra_pos + extra_neg + candidate_set
             new_data.append(data_entry)
         return torch.tensor(new_data)
@@ -52,15 +53,13 @@ class Data(Dataset):
 
     # Get Interact Item
     def get_pos(self, datapair):
-        pos_tensor = torch.zeros(self.num_users,self.num_items)
         pos_dict = dict()
         for i in datapair:
             user = i[0]
             item = i[1]
-            pos_tensor[user,item] = 1
             pos_dict.setdefault(user, list())
             pos_dict[user].append(item)
-        return pos_dict, pos_tensor.bool()
+        return pos_dict
 
     # Get Uninteract Item
     def get_neg(self, datapair, pos_dict):
@@ -79,7 +78,7 @@ class Data(Dataset):
             neg_dict_u = self.neg_dict[u]
             I_plus_List.append(len(pos_dict_u))
             I_minus_List.append(len(neg_dict_u))
-        return torch.tensor(I_plus_List), torch.tensor(I_minus_List)
+        return torch.IntTensor(I_plus_List), torch.IntTensor(I_minus_List)
         # return I_plus_List, I_minus_List
 
     def build_graph(self):
