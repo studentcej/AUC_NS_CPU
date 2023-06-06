@@ -17,8 +17,6 @@ from negative_sampling import *
 from cuda import *
 # print(torch.__version__)
 USE_CUDA = torch.cuda.is_available()
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 device = torch.device('cuda' if USE_CUDA else 'cpu')
 mc = MemCache()
 
